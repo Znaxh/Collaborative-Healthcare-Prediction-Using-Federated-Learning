@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Shield, Activity } from 'lucide-react'
+import { Menu, X, Shield, Activity, User, LogOut } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const location = useLocation()
+  const { currentUser, logout } = useAuth()
 
   const navItems = [
     { name: 'Home', path: '/' },
@@ -16,6 +18,14 @@ const Header = () => {
   ]
 
   const isActive = (path) => location.pathname === path
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error('Failed to log out:', error)
+    }
+  }
 
   return (
     <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">
@@ -38,29 +48,52 @@ const Header = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`relative px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                  isActive(item.path)
-                    ? 'text-blue-400'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                {item.name}
-                {isActive(item.path) && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"
-                    initial={false}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
-              </Link>
-            ))}
-          </nav>
+          <div className="hidden md:flex items-center space-x-8">
+            <nav className="flex space-x-8">
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.path}
+                  className={`relative px-3 py-2 text-sm font-medium transition-colors duration-200 ${
+                    isActive(item.path)
+                      ? 'text-blue-400'
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  {item.name}
+                  {isActive(item.path) && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              ))}
+            </nav>
+
+            {/* User Info (only show if logged in) */}
+            {currentUser && (
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-sm text-gray-300">
+                    {currentUser.displayName || currentUser.email}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Mobile menu button */}
           <button
@@ -101,6 +134,8 @@ const Header = () => {
           )}
         </AnimatePresence>
       </div>
+
+
     </header>
   )
 }

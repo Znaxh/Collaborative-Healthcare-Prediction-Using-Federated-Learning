@@ -1,12 +1,16 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
-import { Download as DownloadIcon, Monitor, Smartphone, Server, Copy, Check, Terminal, Package } from 'lucide-react'
+import { Download as DownloadIcon, Monitor, Smartphone, Server, Copy, Check, Terminal, Package, Lock, LogIn } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import AuthModal from '../components/AuthModal'
 
 const Download = () => {
   const [headerRef, headerInView] = useInView({ threshold: 0.1, triggerOnce: true })
   const [downloadsRef, downloadsInView] = useInView({ threshold: 0.1, triggerOnce: true })
   const [copiedCommand, setCopiedCommand] = useState('')
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const { currentUser } = useAuth()
 
   const downloadOptions = [
     {
@@ -57,6 +61,17 @@ const Download = () => {
     navigator.clipboard.writeText(text)
     setCopiedCommand(`${commandIndex}`)
     setTimeout(() => setCopiedCommand(''), 2000)
+  }
+
+  const handleDownloadClick = (platform) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true)
+      return
+    }
+
+    // Simulate download - in real app, this would trigger actual download
+    console.log(`Downloading ${platform} version for user:`, currentUser.email)
+    // You can add actual download logic here
   }
 
   return (
@@ -128,14 +143,27 @@ const Download = () => {
 
                 {/* Download Button */}
                 <div className="p-6 border-b border-gray-700">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center"
-                  >
-                    <DownloadIcon className="mr-2 h-5 w-5" />
-                    Download for {option.platform}
-                  </motion.button>
+                  {currentUser ? (
+                    <motion.button
+                      onClick={() => handleDownloadClick(option.platform)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center"
+                    >
+                      <DownloadIcon className="mr-2 h-5 w-5" />
+                      Download for {option.platform}
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      onClick={() => setIsAuthModalOpen(true)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full bg-gray-700 border border-gray-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-gray-600 transition-all duration-200 flex items-center justify-center"
+                    >
+                      <Lock className="mr-2 h-5 w-5" />
+                      Sign In to Download
+                    </motion.button>
+                  )}
                 </div>
 
                 {/* Installation Instructions */}
@@ -207,6 +235,13 @@ const Download = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode="signin"
+      />
     </div>
   )
 }
