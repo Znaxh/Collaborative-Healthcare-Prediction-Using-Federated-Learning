@@ -73,23 +73,19 @@ const Header = () => {
               ))}
             </nav>
 
-            {/* User Info (only show if logged in) */}
+            {/* User Menu */}
             {currentUser && (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-sm text-gray-300">
-                    {currentUser.displayName || currentUser.email}
-                  </span>
+                  <User className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-300">{currentUser.displayName || currentUser.email}</span>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+                  className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors"
                 >
-                  <LogOut className="h-4 w-4 mr-1" />
-                  Logout
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
                 </button>
               </div>
             )}

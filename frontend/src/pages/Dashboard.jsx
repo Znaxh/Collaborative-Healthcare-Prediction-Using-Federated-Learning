@@ -1,26 +1,26 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
-import { Activity, Users, TrendingUp, Shield, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { Activity, Users, TrendingUp, Shield, Clock, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
+import { useDashboardData } from '../hooks/useApi'
 
 const Dashboard = () => {
   const [headerRef, headerInView] = useInView({ threshold: 0.1, triggerOnce: true })
   const [metricsRef, metricsInView] = useInView({ threshold: 0.1, triggerOnce: true })
   const [chartsRef, chartsInView] = useInView({ threshold: 0.1, triggerOnce: true })
 
-  // Mock data for the dashboard
-  const currentRound = 6
-  const totalRounds = 20
-  const globalMetrics = {
+  const { metrics, performanceHistory, hospitalParticipation, loading, error } = useDashboardData()
+
+  // Fallback data for when API is unavailable
+  const fallbackMetrics = {
     accuracy: 0.847,
     f1Score: 0.823,
     participatingHospitals: 12,
     totalHospitals: 15,
-    dataPoints: 45678,
-    lastUpdate: '2 minutes ago'
+    dataPoints: 45678
   }
 
-  const performanceHistory = [
+  const fallbackHistory = [
     { round: 1, accuracy: 0.72, f1Score: 0.68, hospitals: 8 },
     { round: 2, accuracy: 0.75, f1Score: 0.71, hospitals: 10 },
     { round: 3, accuracy: 0.78, f1Score: 0.74, hospitals: 11 },
@@ -29,10 +29,18 @@ const Dashboard = () => {
     { round: 6, accuracy: 0.847, f1Score: 0.823, hospitals: 12 },
   ]
 
-  const hospitalParticipation = [
+  const fallbackParticipation = [
     { name: 'Active', value: 12, color: '#10B981' },
     { name: 'Inactive', value: 3, color: '#6B7280' },
   ]
+
+  // Use API data or fallback
+  const currentMetrics = metrics || fallbackMetrics
+  const currentHistory = performanceHistory || fallbackHistory
+  const currentParticipation = hospitalParticipation || fallbackParticipation
+
+  const currentRound = currentHistory.length
+  const totalRounds = 20
 
   const recentActivity = [
     { id: 1, hospital: 'General Hospital', action: 'Model update received', time: '2 min ago', status: 'success' },
@@ -41,7 +49,7 @@ const Dashboard = () => {
     { id: 4, hospital: 'Metro Hospital', action: 'Sync in progress', time: '12 min ago', status: 'pending' },
   ]
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, trend }) => (
+  const StatCard = ({ icon: Icon, title, value, subtitle, trend, isLoading }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={metricsInView ? { opacity: 1, y: 0 } : {}}
@@ -50,20 +58,39 @@ const Dashboard = () => {
     >
       <div className="flex items-center justify-between mb-4">
         <div className="p-2 bg-blue-500/20 rounded-lg">
-          <Icon className="h-6 w-6 text-blue-400" />
+          {isLoading ? (
+            <RefreshCw className="h-6 w-6 text-blue-400 animate-spin" />
+          ) : (
+            <Icon className="h-6 w-6 text-blue-400" />
+          )}
         </div>
-        {trend && (
+        {trend && !isLoading && (
           <div className={`flex items-center text-sm ${trend > 0 ? 'text-green-400' : 'text-red-400'}`}>
             <TrendingUp className="h-4 w-4 mr-1" />
             {trend > 0 ? '+' : ''}{(trend * 100).toFixed(1)}%
           </div>
         )}
       </div>
-      <h3 className="text-2xl font-bold text-white mb-1">{value}</h3>
+      <h3 className="text-2xl font-bold text-white mb-1">
+        {isLoading ? '...' : value}
+      </h3>
       <p className="text-gray-400 text-sm">{title}</p>
       {subtitle && <p className="text-gray-500 text-xs mt-1">{subtitle}</p>}
     </motion.div>
   )
+
+  if (error) {
+    return (
+      <div className="min-h-screen py-24 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Connection Error</h2>
+          <p className="text-gray-400 mb-4">Unable to connect to backend API</p>
+          <p className="text-sm text-gray-500">Using demo data instead</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen py-24">
@@ -81,9 +108,23 @@ const Dashboard = () => {
                 <p className="text-gray-400">Real-time insights into your collaborative AI training network</p>
               </div>
               <div className="mt-4 md:mt-0">
-                <div className="inline-flex items-center px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-lg">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                  <span className="text-green-400 font-medium">System Online</span>
+                <div className={`inline-flex items-center px-4 py-2 border rounded-lg ${
+                  loading ? 'bg-yellow-500/20 border-yellow-500/30' : 
+                  error ? 'bg-red-500/20 border-red-500/30' : 
+                  'bg-green-500/20 border-green-500/30'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full mr-2 ${
+                    loading ? 'bg-yellow-400 animate-pulse' :
+                    error ? 'bg-red-400' :
+                    'bg-green-400 animate-pulse'
+                  }`}></div>
+                  <span className={`font-medium ${
+                    loading ? 'text-yellow-400' :
+                    error ? 'text-red-400' :
+                    'text-green-400'
+                  }`}>
+                    {loading ? 'Connecting...' : error ? 'Demo Mode' : 'System Online'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -92,7 +133,9 @@ const Dashboard = () => {
             <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-white">Current Training Round</h2>
-                <span className="text-gray-400 text-sm">Last updated: {globalMetrics.lastUpdate}</span>
+                <span className="text-gray-400 text-sm">
+                  {loading ? 'Loading...' : error ? 'Demo data' : 'Live data'}
+                </span>
               </div>
               <div className="flex items-center mb-4">
                 <span className="text-3xl font-bold text-white mr-4">Round {currentRound} of {totalRounds}</span>
@@ -118,28 +161,32 @@ const Dashboard = () => {
             <StatCard
               icon={TrendingUp}
               title="Global Model Accuracy"
-              value={`${(globalMetrics.accuracy * 100).toFixed(1)}%`}
-              trend={0.024}
+              value={loading ? '...' : `${(currentMetrics.accuracy * 100).toFixed(1)}%`}
+              trend={!loading && !error ? 0.024 : null}
               subtitle="vs previous round"
+              isLoading={loading}
             />
             <StatCard
               icon={Activity}
               title="F1 Score"
-              value={globalMetrics.f1Score.toFixed(3)}
-              trend={0.018}
+              value={loading ? '...' : currentMetrics.f1Score.toFixed(3)}
+              trend={!loading && !error ? 0.018 : null}
               subtitle="Precision & Recall"
+              isLoading={loading}
             />
             <StatCard
               icon={Users}
               title="Active Hospitals"
-              value={`${globalMetrics.participatingHospitals}/${globalMetrics.totalHospitals}`}
+              value={loading ? '...' : `${currentMetrics.participatingHospitals}/${currentMetrics.totalHospitals}`}
               subtitle="Currently participating"
+              isLoading={loading}
             />
             <StatCard
               icon={Shield}
               title="Data Points"
-              value={globalMetrics.dataPoints.toLocaleString()}
+              value={loading ? '...' : currentMetrics.dataPoints.toLocaleString()}
               subtitle="Federated training samples"
+              isLoading={loading}
             />
           </div>
         </section>
@@ -154,9 +201,12 @@ const Dashboard = () => {
               transition={{ duration: 0.8 }}
               className="bg-gray-900/50 rounded-xl p-6 border border-gray-700"
             >
-              <h3 className="text-xl font-semibold text-white mb-6">Model Performance History</h3>
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Model Performance History
+                {loading && <RefreshCw className="inline h-4 w-4 ml-2 animate-spin" />}
+              </h3>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={performanceHistory}>
+                <LineChart data={currentHistory}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="round" stroke="#9CA3AF" />
                   <YAxis stroke="#9CA3AF" />
@@ -181,12 +231,15 @@ const Dashboard = () => {
               transition={{ duration: 0.8 }}
               className="bg-gray-900/50 rounded-xl p-6 border border-gray-700"
             >
-              <h3 className="text-xl font-semibold text-white mb-6">Hospital Participation</h3>
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Hospital Participation
+                {loading && <RefreshCw className="inline h-4 w-4 ml-2 animate-spin" />}
+              </h3>
               <div className="flex items-center justify-center">
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={hospitalParticipation}
+                      data={currentParticipation}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -194,7 +247,7 @@ const Dashboard = () => {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {hospitalParticipation.map((entry, index) => (
+                      {currentParticipation.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -210,7 +263,7 @@ const Dashboard = () => {
                 </ResponsiveContainer>
               </div>
               <div className="flex justify-center space-x-6 mt-4">
-                {hospitalParticipation.map((item, index) => (
+                {currentParticipation.map((item, index) => (
                   <div key={index} className="flex items-center">
                     <div className={`w-3 h-3 rounded-full mr-2`} style={{ backgroundColor: item.color }}></div>
                     <span className="text-gray-400 text-sm">{item.name}: {item.value}</span>
